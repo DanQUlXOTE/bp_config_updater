@@ -70,7 +70,8 @@ Pick one:
 
 - **API key (recommended).** Put it in an environment variable — default is
   `BINDPLANE_API_KEY`. Override the variable name with `--api-key-env`.
-- **Basic auth.** Pass `--user` and `--pass`.
+- **Basic auth.** Pass `--user` and `--pass` (or `--pass-env` to read the
+  password from an environment variable, which avoids exposing it in `ps`).
 
 If your `--server` value is a bare hostname, `https://` is prepended
 automatically. Use `--skip-tls-verify` for lab deployments with self-signed
@@ -100,6 +101,7 @@ SERVER=$(awk '/remoteURL:/ {print $2}' "$PROFILE")
 --out                 Output YAML path for dry-run            (default: <config>-new.yaml)
 --api-key-env         Env var holding the API key             (default: BINDPLANE_API_KEY)
 --user / --pass       Basic-auth credentials (alternative to API key)
+--pass-env            Env var holding the basic-auth password (safer than --pass)
 --skip-tls-verify     Skip TLS cert verification (lab only)
 --windows-domain      Optional shared Windows domain to set on every new source
 --input               Load configuration from a local YAML file instead of the API
@@ -210,6 +212,8 @@ curl -H "X-Bindplane-Api-Key: $BINDPLANE_API_KEY" \
   it after you're done reviewing.
 - The API key is read from an environment variable by default to keep it
   out of shell history.
+- Use `--pass-env` instead of `--pass` to avoid exposing the password in
+  process listings (`ps aux`).
 
 ## Development
 
