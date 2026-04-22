@@ -47,11 +47,20 @@ func run() error {
 	flag.StringVar(&outPath, "out", "", "Output YAML path for dry-run (default: <config-name>-new.yaml)")
 	flag.StringVar(&apiKeyEnv, "api-key-env", "BINDPLANE_API_KEY", "Env var holding the Bindplane API key")
 	flag.StringVar(&user, "user", "", "Bindplane basic-auth username (alternative to API key)")
-	flag.StringVar(&pass, "pass", "", "Bindplane basic-auth password")
+	flag.StringVar(&pass, "pass", "", "Bindplane basic-auth password (prefer --pass-env)")
+	var passEnv string
+	flag.StringVar(&passEnv, "pass-env", "", "Env var holding the Bindplane basic-auth password (safer than --pass)")
 	flag.BoolVar(&skipTLS, "skip-tls-verify", false, "Skip TLS certificate verification (lab only)")
 	flag.StringVar(&domain, "windows-domain", "", "Optional Windows domain to set on new sources")
 	flag.StringVar(&inputYAML, "input", "", "Load configuration from a local YAML file instead of the API (useful for dry-run)")
 	flag.Parse()
+
+	// Resolve --pass-env (takes precedence over --pass).
+	if passEnv != "" {
+		if v := os.Getenv(passEnv); v != "" {
+			pass = v
+		}
+	}
 
 	if csvPath == "" {
 		return fmt.Errorf("--csv is required")
@@ -63,6 +72,12 @@ func run() error {
 	case "dry-run", "verify", "update":
 	default:
 		return fmt.Errorf("--mode must be one of: dry-run, verify, update")
+	}
+	if (mode == "verify" || mode == "update") && server == "" {
+		return fmt.Errorf("--server is required for %s mode", mode)
+	}
+	if mode == "update" && configName == "" {
+		return fmt.Errorf("--config-name is required for update mode")
 	}
 
 	// Load configuration as a raw map (to preserve unknown fields on round-trip).
@@ -214,6 +229,12 @@ func doUpdate(server, apiKeyEnv, user, pass string, skipTLS bool, cfg map[string
 	confirm, _ := reader.ReadString('\n')
 	if strings.TrimSpace(confirm) != configName {
 		return fmt.Errorf("confirmation mismatch; aborting")
+	}
+	// Clear stale server-generated fields to avoid version conflicts on apply.
+	meta, _ := cfg["metadata"].(map[string]any)
+	if meta != nil {
+		delete(meta, "id")
+		delete(meta, "version")
 	}
 	client, err := bpclient.New(bpclient.Options{
 		BaseURL: server, APIKey: os.Getenv(apiKeyEnv),

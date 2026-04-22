@@ -43,6 +43,7 @@ func ReadCSV(r io.Reader) ([]Row, error) {
 	}
 
 	var rows []Row
+	seen := map[string]int{} // hostname → first line number
 	lineNum := 1
 	for {
 		rec, err := cr.Read()
@@ -62,6 +63,10 @@ func ReadCSV(r io.Reader) ([]Row, error) {
 		if host == "" {
 			return nil, fmt.Errorf("line %d: empty hostname", lineNum)
 		}
+		if firstLine, dup := seen[strings.ToLower(host)]; dup {
+			return nil, fmt.Errorf("line %d: duplicate hostname %q (first seen on line %d)", lineNum, host, firstLine)
+		}
+		seen[strings.ToLower(host)] = lineNum
 		row := Row{
 			Hostname: host,
 			Extras:   map[string]string{},

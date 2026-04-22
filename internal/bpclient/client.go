@@ -68,7 +68,8 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	const maxResponseBytes = 50 << 20 // 50 MB
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +108,9 @@ func (c *Client) Apply(resources []map[string]any) ([]byte, error) {
 }
 
 func truncate(s string, n int) string {
-	if len(s) <= n {
+	runes := []rune(s)
+	if len(runes) <= n {
 		return s
 	}
-	return s[:n] + "…"
+	return string(runes[:n]) + "…"
 }
